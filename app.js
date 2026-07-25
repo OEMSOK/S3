@@ -168,8 +168,8 @@ function createRowElement(index, isEdit = false) {
             <div class="price-input-wrapper">
                 <input type="number" step="any" min="0" class="grid-input item-price" placeholder="0">
                 <select class="currency-select item-currency">
-                    <option value="USD">$</option>
                     <option value="KHR">៛</option>
+                    <option value="USD">$</option>
                 </select>
             </div>
         </td>
@@ -177,7 +177,7 @@ function createRowElement(index, isEdit = false) {
             <input type="number" min="1" class="grid-input item-quantity" placeholder="1">
         </td>
         <td>
-            <span class="grid-total-display item-total-display">$0.00</span>
+            <span class="grid-total-display item-total-display">0 ៛</span>
         </td>
     `;
     return tr;
