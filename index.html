@@ -193,7 +193,7 @@
                         </div>
                     </div>
 
-                    <!-- 10 Rows Input Form Grid -->
+                    <!-- Dynamic Rows Input Form Grid -->
                     <div class="table-responsive">
                         <table class="sales-table" id="new-sale-table">
                             <thead>
@@ -203,13 +203,20 @@
                                     <th style="width: 250px;">តម្លៃរាយ (ប្រាក់រៀល ឬដុល្លា)</th>
                                     <th style="width: 120px;">ចំនួន</th>
                                     <th style="width: 200px;">សរុប (ប្រាក់រៀល ឬដុល្លា)</th>
+                                    <th style="width: 50px; text-align: center;">លុប</th>
                                 </tr>
                             </thead>
                             <tbody id="sales-rows-container">
-                                <!-- Generated 10 rows dynamically in app.js for easy layout modification, or static layout -->
-                                <!-- We pre-populate 10 static rows in HTML so it is guaranteed to have exactly 10 rows structure always -->
+                                <!-- Placed dynamically via JS -->
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Row Actions -->
+                    <div class="table-actions-bar" style="margin-top: -12px; margin-bottom: 20px; display: flex; justify-content: flex-start;">
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-add-row">
+                            <i class="fa-solid fa-plus"></i> បន្ថែមជួរដេក
+                        </button>
                     </div>
 
                     <!-- Invoice Summary & Action Buttons -->
@@ -430,12 +437,20 @@
                             <th style="width: 250px;">តម្លៃរាយ (ប្រាក់រៀល ឬដុល្លា)</th>
                             <th style="width: 120px;">ចំនួន</th>
                             <th style="width: 200px;">សរុប (ប្រាក់រៀល ឬដុល្លា)</th>
+                            <th style="width: 50px; text-align: center;">លុប</th>
                         </tr>
                     </thead>
                     <tbody id="edit-sales-rows-container">
                         <!-- Placed dynamically via JS -->
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Edit Modal Row Actions -->
+            <div class="table-actions-bar" style="margin-top: -12px; margin-bottom: 20px; display: flex; justify-content: flex-start;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-edit-add-row">
+                    <i class="fa-solid fa-plus"></i> បន្ថែមជួរដេក
+                </button>
             </div>
 
             <div class="invoice-summary-grid">

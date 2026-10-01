@@ -617,6 +617,48 @@ body {
     display: inline-block;
 }
 
+/* Delete row button inside grid */
+.btn-remove-row {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--border-radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    transition: all var(--transition-fast);
+}
+
+.btn-remove-row:hover {
+    color: #ef4444;
+    background-color: rgba(239, 68, 68, 0.15);
+}
+
+.btn-sm {
+    padding: 6px 14px;
+    font-size: 0.85rem;
+}
+
+/* Smooth row entrance animation */
+@keyframes rowFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.row-fade-in {
+    animation: rowFadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
 /* Bottom summary row for invoice input */
 .invoice-summary-grid {
     display: flex;

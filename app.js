@@ -33,6 +33,7 @@ const DOM = {
     totalRiel: document.getElementById('total-riel'),
     btnResetSale: document.getElementById('btn-reset-sale'),
     btnSaveSale: document.getElementById('btn-save-sale'),
+    btnAddRow: document.getElementById('btn-add-row'),
 
     // Reports & Filters
     filterType: document.getElementById('filter-type'),
@@ -70,6 +71,7 @@ const DOM = {
     editTotalRiel: document.getElementById('edit-total-riel'),
     btnCancelEdit: document.getElementById('btn-cancel-edit'),
     btnSaveEdit: document.getElementById('btn-save-edit'),
+    btnEditAddRow: document.getElementById('btn-edit-add-row'),
 
     receiptModal: document.getElementById('receipt-modal'),
     closeReceiptModal: document.getElementById('close-receipt-modal'),
@@ -141,12 +143,10 @@ function saveInvoices() {
     refreshUI();
 }
 
-// Generate the 10 rows for Sales Table
+// Initialize Sales Table with initially only 1 row
 function setupSalesGrid() {
     DOM.salesRowsContainer.innerHTML = '';
-    for (let i = 1; i <= 10; i++) {
-        DOM.salesRowsContainer.appendChild(createRowElement(i, false));
-    }
+    DOM.salesRowsContainer.appendChild(createRowElement(1, false));
     
     // Set default date to today
     const today = new Date().toISOString().split('T')[0];
@@ -174,13 +174,159 @@ function createRowElement(index, isEdit = false) {
             </div>
         </td>
         <td>
-            <input type="number" min="1" class="grid-input item-quantity" placeholder="1">
+            <input type="number" min="1" class="grid-input item-quantity" value="1" placeholder="1">
         </td>
         <td>
             <span class="grid-total-display item-total-display">0 ៛</span>
         </td>
+        <td style="width: 50px; text-align: center;">
+            <button type="button" class="btn-remove-row" title="លុបជួរនេះ"><i class="fa-solid fa-trash-can"></i></button>
+        </td>
     `;
     return tr;
+}
+
+// Dynamic Row Helper Functions
+function isRowFilled(row) {
+    const nameVal = row.querySelector('.item-name').value.trim();
+    const priceVal = row.querySelector('.item-price').value.trim();
+    return nameVal !== '' && priceVal !== '';
+}
+
+function isRowPartiallyFilled(row) {
+    const nameVal = row.querySelector('.item-name').value.trim();
+    const priceVal = row.querySelector('.item-price').value.trim();
+    return nameVal !== '' || priceVal !== '';
+}
+
+function updateRowIndices(tableBody) {
+    const rows = tableBody.querySelectorAll('tr');
+    rows.forEach((row, idx) => {
+        row.dataset.index = idx + 1;
+        const indexCell = row.querySelector('.row-index');
+        if (indexCell) {
+            indexCell.innerText = idx + 1;
+        }
+    });
+}
+
+// Manage dynamic rows:
+// 1. Shows 1 row initially.
+// 2. Automatically reveals / appends next row as soon as the current row is completed.
+// 3. Prunes unnecessary empty trailing rows if user erases an item.
+function checkAndManageRows(tableBody, isEdit = false, isChangeEvent = false) {
+    let rows = Array.from(tableBody.querySelectorAll('tr'));
+    if (rows.length === 0) {
+        tableBody.appendChild(createRowElement(1, isEdit));
+        return;
+    }
+
+    const lastRow = rows[rows.length - 1];
+    const lastName = lastRow.querySelector('.item-name').value.trim();
+    const lastPrice = lastRow.querySelector('.item-price').value.trim();
+
+    // Condition to add the next row:
+    // When last row has both name and price filled, OR on change (select/blur) and item name is provided
+    const shouldAddRow = (lastName !== '' && lastPrice !== '') || (isChangeEvent && lastName !== '');
+
+    if (shouldAddRow) {
+        const nextIndex = rows.length + 1;
+        const newRow = createRowElement(nextIndex, isEdit);
+        tableBody.appendChild(newRow);
+        newRow.classList.add('row-fade-in');
+    } else {
+        // Prune extra empty trailing rows if there are multiple, leaving at most 1 empty row at the end
+        while (rows.length > 1) {
+            const currentLast = rows[rows.length - 1];
+            const prevRow = rows[rows.length - 2];
+            const currentFilled = isRowPartiallyFilled(currentLast);
+            const prevFilled = isRowPartiallyFilled(prevRow);
+
+            if (!currentFilled && !prevFilled) {
+                currentLast.remove();
+                rows.pop();
+            } else {
+                break;
+            }
+        }
+    }
+
+    updateRowIndices(tableBody);
+}
+
+// Setup full event lifecycle for dynamic table rows (inputs, change, keyboard navigation, delete button)
+function setupTableListeners(tableBody, totalUsdLabel, totalRielLabel, isEdit = false) {
+    // Dynamic row addition and calculation while typing
+    tableBody.addEventListener('input', () => {
+        checkAndManageRows(tableBody, isEdit, false);
+        handleRowCalculations(tableBody, totalUsdLabel, totalRielLabel);
+    });
+
+    // Dynamic row addition on select from datalist or focus lost
+    tableBody.addEventListener('change', () => {
+        checkAndManageRows(tableBody, isEdit, true);
+        handleRowCalculations(tableBody, totalUsdLabel, totalRielLabel);
+    });
+
+    // Enter key smart navigation
+    tableBody.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const target = e.target;
+            const row = target.closest('tr');
+            if (!row) return;
+
+            e.preventDefault();
+
+            const nameInput = row.querySelector('.item-name');
+            const priceInput = row.querySelector('.item-price');
+            const qtyInput = row.querySelector('.item-quantity');
+
+            if (target === nameInput) {
+                priceInput.focus();
+                priceInput.select();
+            } else if (target === priceInput || target === qtyInput) {
+                const rows = Array.from(tableBody.querySelectorAll('tr'));
+                const isLast = row === rows[rows.length - 1];
+                if (isLast) {
+                    checkAndManageRows(tableBody, isEdit, true);
+                    const updatedRows = Array.from(tableBody.querySelectorAll('tr'));
+                    const nextRow = updatedRows[updatedRows.length - 1];
+                    if (nextRow && nextRow !== row) {
+                        nextRow.querySelector('.item-name').focus();
+                    }
+                } else {
+                    const nextRow = row.nextElementSibling;
+                    if (nextRow) nextRow.querySelector('.item-name').focus();
+                }
+                handleRowCalculations(tableBody, totalUsdLabel, totalRielLabel);
+            }
+        }
+    });
+
+    // Delete row button click
+    tableBody.addEventListener('click', (e) => {
+        const removeBtn = e.target.closest('.btn-remove-row');
+        if (!removeBtn) return;
+
+        const row = removeBtn.closest('tr');
+        if (!row) return;
+
+        const allRows = tableBody.querySelectorAll('tr');
+        if (allRows.length <= 1) {
+            // Reset the only remaining row instead of removing it
+            row.querySelector('.item-name').value = '';
+            row.querySelector('.item-price').value = '';
+            row.querySelector('.item-quantity').value = '1';
+            row.querySelector('.item-currency').value = 'KHR';
+            row.querySelector('.item-total-display').innerText = '0 ៛';
+        } else {
+            row.remove();
+        }
+
+        checkAndManageRows(tableBody, isEdit, false);
+        updateRowIndices(tableBody);
+        handleRowCalculations(tableBody, totalUsdLabel, totalRielLabel);
+    });
 }
 
 // Refresh Dashboard, Reports and UI Widgets
@@ -263,8 +409,9 @@ function handleRowCalculations(tableBody, totalUsdLabel, totalRielLabel) {
         const qtyInput = row.querySelector('.item-quantity');
         const totalDisplay = row.querySelector('.item-total-display');
 
-        const price = parseFloat(priceInput.value) || 0;
-        const qty = parseInt(qtyInput.value) || 0;
+        const rawPrice = priceInput.value.trim();
+        const price = rawPrice === '' ? 0 : (parseFloat(rawPrice) || 0);
+        const qty = parseInt(qtyInput.value) || 1;
         const currency = currencySelect.value;
         
         const rowTotal = price * qty;
@@ -288,13 +435,34 @@ function handleRowCalculations(tableBody, totalUsdLabel, totalRielLabel) {
 
 // Setup Event Listeners
 function setupEventListeners() {
-    // New Sale Dynamic Calculations
-    DOM.salesRowsContainer.addEventListener('input', () => {
-        handleRowCalculations(DOM.salesRowsContainer, DOM.totalUsd, DOM.totalRiel);
-    });
-    DOM.salesRowsContainer.addEventListener('change', () => {
-        handleRowCalculations(DOM.salesRowsContainer, DOM.totalUsd, DOM.totalRiel);
-    });
+    // Dynamic table row listeners (auto add next row, enter key nav, remove row)
+    setupTableListeners(DOM.salesRowsContainer, DOM.totalUsd, DOM.totalRiel, false);
+    setupTableListeners(DOM.editSalesRowsContainer, DOM.editTotalUsd, DOM.editTotalRiel, true);
+
+    // Manual Add Row button listeners
+    if (DOM.btnAddRow) {
+        DOM.btnAddRow.addEventListener('click', () => {
+            const rows = DOM.salesRowsContainer.querySelectorAll('tr');
+            const nextIndex = rows.length + 1;
+            const newRow = createRowElement(nextIndex, false);
+            DOM.salesRowsContainer.appendChild(newRow);
+            newRow.classList.add('row-fade-in');
+            updateRowIndices(DOM.salesRowsContainer);
+            newRow.querySelector('.item-name').focus();
+        });
+    }
+
+    if (DOM.btnEditAddRow) {
+        DOM.btnEditAddRow.addEventListener('click', () => {
+            const rows = DOM.editSalesRowsContainer.querySelectorAll('tr');
+            const nextIndex = rows.length + 1;
+            const newRow = createRowElement(nextIndex, true);
+            DOM.editSalesRowsContainer.appendChild(newRow);
+            newRow.classList.add('row-fade-in');
+            updateRowIndices(DOM.editSalesRowsContainer);
+            newRow.querySelector('.item-name').focus();
+        });
+    }
 
     // Reset Sales button
     DOM.btnResetSale.addEventListener('click', () => {
@@ -410,14 +578,6 @@ function setupEventListeners() {
     DOM.closeEditModal.addEventListener('click', () => DOM.editModal.classList.remove('active-modal'));
     DOM.btnCancelEdit.addEventListener('click', () => DOM.editModal.classList.remove('active-modal'));
     DOM.btnSaveEdit.addEventListener('click', saveEditedInvoice);
-    
-    // Dynamic calculations on Edit Form Changes
-    DOM.editSalesRowsContainer.addEventListener('input', () => {
-        handleRowCalculations(DOM.editSalesRowsContainer, DOM.editTotalUsd, DOM.editTotalRiel);
-    });
-    DOM.editSalesRowsContainer.addEventListener('change', () => {
-        handleRowCalculations(DOM.editSalesRowsContainer, DOM.editTotalUsd, DOM.editTotalRiel);
-    });
 
     DOM.closeReceiptModal.addEventListener('click', () => DOM.receiptModal.classList.remove('active-modal'));
     DOM.btnCloseReceiptPreview.addEventListener('click', () => DOM.receiptModal.classList.remove('active-modal'));
@@ -707,7 +867,8 @@ function saveNewInvoice() {
     
     rows.forEach(row => {
         const nameVal = row.querySelector('.item-name').value.trim();
-        const priceVal = parseFloat(row.querySelector('.item-price').value);
+        const rawPrice = row.querySelector('.item-price').value.trim();
+        const priceVal = rawPrice === '' ? 0 : parseFloat(rawPrice);
         const currVal = row.querySelector('.item-currency').value;
         const qtyVal = parseInt(row.querySelector('.item-quantity').value) || 1;
 
@@ -789,19 +950,20 @@ function openEditModal(id) {
 
     DOM.editSalesRowsContainer.innerHTML = '';
     
-    // Fill in items. The system must display exactly 10 rows.
-    for (let i = 1; i <= 10; i++) {
-        const item = inv.items[i - 1]; // items inside invoice database
-        const row = createRowElement(i, true);
-        
-        if (item) {
+    // Fill in existing items + 1 empty row for subsequent additions
+    if (inv.items && inv.items.length > 0) {
+        inv.items.forEach((item, index) => {
+            const row = createRowElement(index + 1, true);
             row.querySelector('.item-name').value = item.name;
             row.querySelector('.item-price').value = item.price;
             row.querySelector('.item-currency').value = item.currency;
             row.querySelector('.item-quantity').value = item.quantity;
-        }
-        
-        DOM.editSalesRowsContainer.appendChild(row);
+            DOM.editSalesRowsContainer.appendChild(row);
+        });
+        // Append 1 empty row ready for adding further items
+        DOM.editSalesRowsContainer.appendChild(createRowElement(inv.items.length + 1, true));
+    } else {
+        DOM.editSalesRowsContainer.appendChild(createRowElement(1, true));
     }
 
     handleRowCalculations(DOM.editSalesRowsContainer, DOM.editTotalUsd, DOM.editTotalRiel);
@@ -826,7 +988,8 @@ function saveEditedInvoice() {
     
     rows.forEach(row => {
         const nameVal = row.querySelector('.item-name').value.trim();
-        const priceVal = parseFloat(row.querySelector('.item-price').value);
+        const rawPrice = row.querySelector('.item-price').value.trim();
+        const priceVal = rawPrice === '' ? 0 : parseFloat(rawPrice);
         const currVal = row.querySelector('.item-currency').value;
         const qtyVal = parseInt(row.querySelector('.item-quantity').value) || 1;
 
